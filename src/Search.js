@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { search } from "./BooksAPI";
-import { updateShelf } from "./utils";
 import { Link } from "react-router-dom";
+import { Book } from "./components/Book";
+import { BOOK_CONTEXT } from "./bookContext";
 
 export const Search = () => {
 	const [searchedBooks, setSearchedBooks] = useState([]);
+	const {books, updateShelf} = useContext(BOOK_CONTEXT)
 
 	const handleSearch = async (ev) => {
 		if (ev.target.value === "") {
@@ -12,20 +14,23 @@ export const Search = () => {
 			return;
 		}
 
-		const res = await search(ev.target.value, 5);
+		setTimeout(async () => {
+			const res = await search(ev.target.value, 5);
 
-		if (res.hasOwnProperty("error")) {
-			setSearchedBooks([]);
-			return;
-		}
+			if (res.hasOwnProperty("error")) {
+				setSearchedBooks([]);
+				return;
+			}
 
-		setSearchedBooks(res);
-	};
+			const filteredBooksThumbnail = res.filter((book) =>
+				book.hasOwnProperty("imageLinks")
+			);
+			const filteredBooksAuthors = filteredBooksThumbnail.filter((book) =>
+				book.hasOwnProperty("authors")
+			);
 
-	const handleSubmit = async (ev, book) => {
-		ev.preventDefault();
-
-		updateShelf(ev.target.value, book);
+			setSearchedBooks(filteredBooksAuthors);
+		}, 500);
 	};
 
 	return (
@@ -45,40 +50,11 @@ export const Search = () => {
 			<div className="search-books-results">
 				<ol className="books-grid">
 					{searchedBooks.map((book) => {
+						const found = books.find(userBook => book.id === userBook.id)
+
 						return (
 							<li key={book.id}>
-								<div className="book">
-									<div className="book-top">
-										<div
-											className="book-cover"
-											style={{
-												width: 128,
-												height: 193,
-												backgroundImage: `url("${book.imageLinks.smallThumbnail}")`,
-											}}
-										></div>
-										<div className="book-shelf-changer">
-											<select
-												onChange={(ev) => handleSubmit(ev, book)}
-												defaultValue={book.shelf}
-											>
-												<option value={"none"} disabled>
-													Move to...
-												</option>
-												<option value={"currentlyReading"}>
-													Currently Reading
-												</option>
-												<option value={"wantToRead"}>Want to Read</option>
-												<option value={"read"}>Read</option>
-												<option value={"none"}>None</option>
-											</select>
-										</div>
-									</div>
-									<div className="book-title">{book.title}</div>
-									<div className="book-authors">
-										{book.hasOwnProperty("authors") ? book.authors[0] : ""}
-									</div>
-								</div>
+								<Book book={found || book} updateShelf={updateShelf} />
 							</li>
 						);
 					})}
